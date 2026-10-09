@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Math Golf</title>
+    <style>
+        body {
+            background-color: #1b263b;
+            color: #e0e1dd;
+            font-family: 'Courier New', Courier, monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
+            padding: 8px;
+            overflow: hidden; /* Optimized to fit 1366x768 Chromebook embeds without scrollbars */
+        }
+
+        h1 {
+            color: #77bfa3;
+            margin: 0 0 6px 0;
+            font-size: 30px;
+            font-weight: 900;
+            letter-spacing: 2px;
+            text-shadow: 2px 2px #000000;
+        }
+
+        #game-wrapper {
+            border: 4px solid #77bfa3;
+            background-color: #0d1b2a;
+            box-shadow: 0px 8px 20px rgba(0, 0, 0, 0.6);
+            border-radius: 10px;
+            overflow: hidden;
+            width: 850px;
+        }
+
+        #ui-panel {
+            background-color: #1b263b;
+            width: 100%;
+            padding: 8px 12px;
+            box-sizing: border-box;
+            border-bottom: 3px solid #77bfa3;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        #scoreboard {
+            display: flex;
+            gap: 8px;
+        }
+
+        .stats-box {
+            color: #e0e1dd;
+            background: rgba(0, 0, 0, 0.4);
+            padding: 4px 10px;
+            border-radius: 6px;
+            border: 2px solid #457b9d;
+            box-shadow: 0 3px 5px rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-width: 95px;
+        }
+
+        .stats-label {
+            font-size: 10px;
+            color: #77bfa3;
+            margin-bottom: 2px;
+            letter-spacing: 1px;
+            font-weight: bold;
+        }
+
+        .stats-box span {
+            color: #f4d35e;
+            font-size: 22px;
+            font-weight: 900;
+        }
+
+        #controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .input-group {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 15px;
+            font-weight: bold;
+            color: #e0e1dd;
+            background-color: rgba(255, 255, 255, 0.05);
+            padding: 3px 8px;
+            border-radius: 6px;
+        }
+
+        input {
+            background-color: #0d1b2a;
+            color: #f4d35e;
+            border: 3px solid #f4d35e;
+            font-family: monospace;
+            font-size: 20px;
+            font-weight: bold;
+            width: 60px;
+            height: 36px;
+            text-align: center;
+            border-radius: 6px;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.6);
+            transition: all 0.2s;
+            cursor: text;
+        }
+
+        input:focus {
+            outline: none;
+            background-color: #1d3557;
+            border-color: #a6e3a1;
+            transform: scale(1.04);
+        }
+
+        button {
+            background-color: #e63946;
+            color: #ffffff;
+            border: 2px solid #ffffff;
+            font-family: 'Courier New', monospace;
+            font-size: 17px;
+            font-weight: 900;
+            padding: 6px 16px;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.2s;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+            text-transform: uppercase;
+            white-space: nowrap;
+        }
+
+        button:hover:not(:disabled) {
+            background-color: #f1faee;
+            color: #e63946;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.5);
+        }
+
+        button:active:not(:disabled) {
+            transform: translateY(1px);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+        }
+
+        button:disabled {
+            background-color: #555555;
+            color: #888888;
+            cursor: not-allowed;
+            border-color: #444;
+            box-shadow: none;
+        }
+
+        #next-hole-btn {
+            background-color: #a6e3a1;
+            color: #0d1b2a;
+            border-color: #0d1b2a;
+        }
+        
+        #next-hole-btn:hover {
+            background-color: #f1faee;
+            color: #0d1b2a;
+        }
+
+        canvas {
+            display: block;
+            background-color: #1d3557;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>MATH GOLF</h1>
+
+    <div id="game-wrapper">
+        <div id="ui-panel">
+            <div id="scoreboard">
+                <div class="stats-box">
+                    <span class="stats-label">SWINGS TAKEN</span>
+                    <span id="swings-num">0</span>
+                </div>
+                <div class="stats-box">
+                    <span class="stats-label">HOLES PLAYED</span>
+                    <span id="holes-num">0</span>
+                </div>
+            </div>
+            
+            <div id="controls">
+                <div class="input-group">
+                    Angle: 
+                    <input type="number" id="angle-input" min="0" max="90" value="45">
+                </div>
+                <div class="input-group">
+                    Velocity: 
+                    <input type="number" id="velocity-input" min="1" max="100" value="50">
+                </div>
+                <button id="swing-btn" onclick="launchBall()">SWING!</button>
+                <button id="next-hole-btn" onclick="nextHole()" style="display:none;">NEXT HOLE</button>
+            </div>
+        </div>
+
+        <canvas id="gameCanvas" width="850" height="480"></canvas>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Layout Constants
+        const GROUND_Y = 410;
+        const TEE_X = 60;
+        const HOLE_WIDTH = 22; // Narrowed target hole for higher precision
+
+        // Score Metrics
+        let swingsTaken = 0;
+        let holesPlayed = 0;
+
+        // State Flags
+        let isMoving = false;
+        let isResetting = false;
+        let hasWon = false;
+
+        let feedbackText = "Enter your angle & velocity, then swing!";
+        let feedbackColor = "#f4d35e";
+
+        // Terrain & Target Parameters
+        let flagX = 750;
+        let hillStartX = 140;
+        let hillEndX = 500;
+        let hillPeakHeight = 120;
+
+        // Ball Mechanics & Persistent Trajectory Trails
+        let ball = { x: TEE_X, y: GROUND_Y - 5, vx: 0, vy: 0, radius: 5 };
+        let allTrails = [];    // Saved trajectories from prior missed shots on current hole
+        let currentTrail = []; // Active shot trajectory
+        const gravity = 0.18;
+
+        function generateNewTerrain() {
+            // 1. Randomize Hill Start (between 120px and 200px)
+            hillStartX = Math.floor(Math.random() * 80) + 120;
+
+            // 2. Randomize Hill Width (between 150px and 280px)
+            let hillWidth = Math.floor(Math.random() * 130) + 150;
+            hillEndX = hillStartX + hillWidth;
+
+            // 3. Randomize Hill Height (between 50px and 200px)
+            hillPeakHeight = Math.floor(Math.random() * 150) + 50;
+
+            // 4. Randomize Hole position on FLAT ground past the hill
+            let minHoleX = hillEndX + 25;
+            let maxHoleX = 815;
+
+            flagX = Math.floor(Math.random() * (maxHoleX - minHoleX + 1)) + minHoleX;
+        }
+
+        function resetBallToTee() {
+            ball.x = TEE_X;
+            ball.y = GROUND_Y - ball.radius;
+            ball.vx = 0;
+            ball.vy = 0;
+            isMoving = false;
+            isResetting = false;
+
+            document.getElementById('swing-btn').disabled = false;
+        }
+
+        function nextHole() {
+            hasWon = false;
+            allTrails = []; // Reset shot trails for the new hole layout
+            currentTrail = [];
+
+            generateNewTerrain();
+            resetBallToTee();
+
+            document.getElementById('swing-btn').style.display = 'inline-block';
+            document.getElementById('swing-btn').disabled = false;
+            document.getElementById('next-hole-btn').style.display = 'none';
+
+            feedbackText = "New Hole! Estimate your parameters and swing!";
+            feedbackColor = "#f4d35e";
+        }
+
+        function getTerrainY(x) {
+            if (x >= hillStartX && x <= hillEndX) {
+                // Smooth sine wave hill profile
+                let progress = (x - hillStartX) / (hillEndX - hillStartX);
+                return GROUND_Y - Math.sin(progress * Math.PI) * hillPeakHeight;
+            }
+            return GROUND_Y;
+        }
+
+        function launchBall() {
+            if (isMoving || isResetting || hasWon) return;
+
+            let angle = parseFloat(document.getElementById('angle-input').value);
+            let velocity = parseFloat(document.getElementById('velocity-input').value);
+
+            // Bounds protection
+            if (isNaN(angle)) angle = 45;
+            if (isNaN(velocity)) velocity = 50;
+            angle = Math.max(0, Math.min(90, angle));
+            velocity = Math.max(1, Math.min(100, velocity));
+
+            let angleRad = (angle * Math.PI) / 180;
+            let speedScale = 0.22;
+
+            ball.vx = Math.cos(angleRad) * velocity * speedScale;
+            ball.vy = -Math.sin(angleRad) * velocity * speedScale;
+
+            swingsTaken++;
+            document.getElementById('swings-num').innerText = swingsTaken;
+
+            isMoving = true;
+            currentTrail = [];
+
+            document.getElementById('swing-btn').disabled = true;
+
+            feedbackText = "Ball in flight...";
+            feedbackColor = "#ffffff";
+        }
+
+        function handleMiss(message) {
+            isMoving = false;
+            isResetting = true;
+            feedbackText = message;
+            feedbackColor = "#e63946";
+
+            if (currentTrail.length > 0) {
+                allTrails.push([...currentTrail]);
+            }
+
+            setTimeout(() => {
+                feedbackText = "Try again! Use your previous trail to adjust.";
+                feedbackColor = "#f4d35e";
+                resetBallToTee();
+            }, 1400);
+        }
+
+        function handleWin() {
+            isMoving = false;
+            hasWon = true;
+            ball.y = GROUND_Y + ball.radius;
+
+            if (currentTrail.length > 0) {
+                allTrails.push([...currentTrail]);
+            }
+
+            holesPlayed++;
+            document.getElementById('holes-num').innerText = holesPlayed;
+
+            feedbackText = "IN THE HOLE! Excellent shot!";
+            feedbackColor = "#a6e3a1";
+
+            document.getElementById('swing-btn').style.display = 'none';
+            document.getElementById('next-hole-btn').style.display = 'inline-block';
+        }
+
+        function update() {
+            if (isMoving) {
+                ball.vy += gravity;
+                ball.x += ball.vx;
+                ball.y += ball.vy;
+
+                currentTrail.push({ x: ball.x, y: ball.y });
+
+                let currentTerrainY = getTerrainY(ball.x);
+
+                // Out of Bounds check
+                if (ball.x > canvas.width || ball.x < 0 || ball.y > canvas.height + 50) {
+                    handleMiss("Out of bounds! Adjust power or angle.");
+                    return;
+                }
+
+                // Surface Collision check
+                if (ball.y + ball.radius >= currentTerrainY) {
+                    if (ball.x >= flagX - HOLE_WIDTH / 2 && ball.x <= flagX + HOLE_WIDTH / 2) {
+                        handleWin();
+                    } else {
+                        ball.y = currentTerrainY - ball.radius;
+
+                        let missMsg = "";
+                        if (ball.x < hillStartX) {
+                            missMsg = "Too short! Increase power or adjust angle.";
+                        } else if (ball.x >= hillStartX && ball.x <= hillEndX) {
+                            missMsg = "Hit the hill! Adjust your trajectory or power.";
+                        } else if (ball.x > hillEndX && ball.x < flagX) {
+                            missMsg = "Over the hill, but short of the flag!";
+                        } else if (ball.x > flagX) {
+                            missMsg = "Overshot the hole! Lower your velocity.";
+                        }
+
+                        handleMiss(missMsg);
+                    }
+                }
+            }
+        }
+
+        function drawTerrain() {
+            // Sky Gradient
+            let skyGrad = ctx.createLinearGradient(0, 0, 0, GROUND_Y);
+            skyGrad.addColorStop(0, '#1d3557');
+            skyGrad.addColorStop(1, '#457b9d');
+            ctx.fillStyle = skyGrad;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Ground & Hill Profile
+            ctx.fillStyle = '#2a9d8f';
+            ctx.beginPath();
+            ctx.moveTo(0, canvas.height);
+            ctx.lineTo(0, GROUND_Y);
+
+            for (let x = 0; x <= canvas.width; x += 5) {
+                let y = getTerrainY(x);
+                ctx.lineTo(x, y);
+            }
+
+            ctx.lineTo(canvas.width, canvas.height);
+            ctx.closePath();
+            ctx.fill();
+
+            // Underground Accent Layer
+            ctx.fillStyle = '#264653';
+            ctx.beginPath();
+            ctx.moveTo(0, canvas.height);
+            ctx.lineTo(0, GROUND_Y + 15);
+            for (let x = 0; x <= canvas.width; x += 10) {
+                let y = getTerrainY(x) + 15;
+                ctx.lineTo(x, y);
+            }
+            ctx.lineTo(canvas.width, canvas.height);
+            ctx.closePath();
+            ctx.fill();
+
+            // Hole Cutout
+            ctx.fillStyle = '#0d1b2a';
+            ctx.fillRect(flagX - HOLE_WIDTH / 2, GROUND_Y, HOLE_WIDTH, 14);
+
+            // Flag Pole and Red Flag
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(flagX, GROUND_Y);
+            ctx.lineTo(flagX, GROUND_Y - 70);
+            ctx.stroke();
+
+            ctx.fillStyle = '#e63946';
+            ctx.beginPath();
+            ctx.moveTo(flagX, GROUND_Y - 70);
+            ctx.lineTo(flagX - 25, GROUND_Y - 58);
+            ctx.lineTo(flagX, GROUND_Y - 46);
+            ctx.closePath();
+            ctx.fill();
+
+            // Tee Box
+            ctx.fillStyle = '#e9c46a';
+            ctx.fillRect(TEE_X - 10, GROUND_Y - 4, 20, 4);
+        }
+
+        function drawTrails() {
+            ctx.lineWidth = 3;
+            ctx.setLineDash([5, 5]);
+
+            // Draw all previous trajectory attempts
+            for (let i = 0; i < allTrails.length; i++) {
+                let trail = allTrails[i];
+                if (trail.length > 1) {
+                    ctx.strokeStyle = 'rgba(244, 211, 94, 0.45)';
+                    ctx.beginPath();
+                    ctx.moveTo(trail[0].x, trail[0].y);
+                    for (let j = 1; j < trail.length; j++) {
+                        ctx.lineTo(trail[j].x, trail[j].y);
+                    }
+                    ctx.stroke();
+                }
+            }
+
+            // Draw current flight path
+            if (currentTrail.length > 1) {
+                ctx.strokeStyle = 'rgba(244, 211, 94, 1.0)';
+                ctx.beginPath();
+                ctx.moveTo(currentTrail[0].x, currentTrail[0].y);
+                for (let i = 1; i < currentTrail.length; i++) {
+                    ctx.lineTo(currentTrail[i].x, currentTrail[i].y);
+                }
+                ctx.stroke();
+            }
+
+            ctx.setLineDash([]);
+        }
+
+        function render() {
+            drawTerrain();
+            drawTrails();
+
+            // Golf Ball
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#000000';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+
+            // Feedback Text Banner
+            ctx.font = 'bold 20px "Courier New", monospace';
+            ctx.fillStyle = feedbackColor;
+            ctx.textAlign = 'center';
+            ctx.shadowColor = "rgba(0,0,0,0.9)";
+            ctx.shadowBlur = 6;
+            ctx.fillText(feedbackText, canvas.width / 2, 40);
+            ctx.shadowBlur = 0;
+            ctx.textAlign = 'left';
+        }
+
+        function gameLoop() {
+            update();
+            render();
+            requestAnimationFrame(gameLoop);
+        }
+
+        window.onload = function() {
+            generateNewTerrain();
+            resetBallToTee();
+            gameLoop();
+        };
+    </script>
+</body>
+</html>
