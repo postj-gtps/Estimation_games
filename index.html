@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estimation Arcade</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Nunito', sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+            overflow-x: hidden;
+        }
+
+        h1, h2, h3, .font-arcade {
+            font-family: 'Fredoka', cursive;
+        }
+
+        @keyframes floatSlow {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-18px) rotate(8deg); }
+        }
+
+        @keyframes floatFast {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-28px) rotate(-12deg); }
+        }
+
+        .animate-float-slow {
+            animation: floatSlow 6s ease-in-out infinite;
+        }
+
+        .animate-float-fast {
+            animation: floatFast 4s ease-in-out infinite;
+        }
+
+        .glass-card {
+            background: rgba(30, 41, 59, 0.75);
+            backdrop-filter: blur(16px);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+        }
+
+        .glass-card:hover {
+            border-color: rgba(236, 72, 153, 0.4);
+        }
+
+        .btn-arcade {
+            transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+            box-shadow: 0 8px 0 rgba(0, 0, 0, 0.3), 0 0 20px rgba(99, 102, 241, 0.4);
+        }
+
+        .btn-arcade:hover {
+            transform: translateY(-4px) scale(1.02);
+            box-shadow: 0 12px 0 rgba(0, 0, 0, 0.3), 0 0 30px rgba(236, 72, 153, 0.7);
+        }
+
+        .btn-arcade:active {
+            transform: translateY(2px) scale(0.98);
+            box-shadow: 0 4px 0 rgba(0, 0, 0, 0.3);
+        }
+
+        ::-webkit-scrollbar {
+            width: 10px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between selection:bg-pink-500 selection:text-white pb-12">
+
+    <div class="fixed inset-0 pointer-events-none overflow-hidden z-0">
+        <div class="absolute top-12 left-[10%] text-indigo-500/20 text-6xl animate-float-slow"><i class="fa-solid fa-calculator"></i></div>
+        <div class="absolute top-1/4 right-[8%] text-pink-500/20 text-7xl animate-float-fast"><i class="fa-solid fa-gamepad"></i></div>
+        <div class="absolute top-1/2 left-[5%] text-amber-500/20 text-6xl animate-float-fast"><i class="fa-solid fa-compass-drafting"></i></div>
+        <div class="absolute bottom-1/3 right-[12%] text-emerald-500/20 text-7xl animate-float-slow"><i class="fa-solid fa-bullseye"></i></div>
+        <div class="absolute bottom-10 left-[15%] text-purple-500/20 text-6xl animate-float-slow"><i class="fa-solid fa-brain"></i></div>
+        
+        <div class="absolute top-[-10%] left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-indigo-600/15 rounded-full blur-[140px]"></div>
+        <div class="absolute bottom-[10%] left-[10%] w-[500px] h-[500px] bg-pink-600/10 rounded-full blur-[140px]"></div>
+        <div class="absolute top-[40%] right-[10%] w-[450px] h-[450px] bg-cyan-600/10 rounded-full blur-[140px]"></div>
+    </div>
+
+    <div class="relative z-10 space-y-8">
+
+        <header class="container mx-auto px-4 pt-6 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center text-white text-2xl font-black shadow-lg shadow-indigo-500/30 ring-2 ring-white/20">
+                    <i class="fa-solid fa-gamepad"></i>
+                </div>
+                <div>
+                    <h1 class="text-3xl sm:text-4xl font-arcade tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-pink-400 to-indigo-300">
+                        ESTIMATION ARCADE
+                    </h1>
+                </div>
+            </div>
+
+            <!-- Sound Effects Toggle Button -->
+            <button id="soundToggleBtn" onclick="toggleSound()" class="px-4 py-2 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 text-slate-300 text-sm font-bold flex items-center gap-2 transition duration-200">
+                <i id="soundIcon" class="fa-solid fa-volume-high text-indigo-400"></i>
+                <span id="soundText">Sound ON</span>
+            </button>
+        </header>
+
+        <main class="container mx-auto px-4 pt-4">
+            <div id="gamesGrid" class="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-6xl mx-auto">
+
+                <!-- GAME CARD 1: CAVE GOLF -->
+                <div class="game-card glass-card rounded-3xl overflow-hidden flex flex-col justify-between group transform hover:-translate-y-2 transition-all duration-300">
+                    <div>
+                        <div class="h-48 bg-gradient-to-br from-purple-900 via-indigo-900 to-slate-900 relative p-6 flex items-center justify-between overflow-hidden">
+                            <div class="absolute -right-10 -bottom-10 w-44 h-44 bg-purple-500/20 rounded-full blur-2xl group-hover:bg-pink-500/30 transition-all duration-500"></div>
+                            
+                            <svg class="absolute top-0 left-0 w-full opacity-30 text-indigo-400" height="40" viewBox="0 0 400 40" fill="currentColor">
+                                <polygon points="0,0 20,30 40,0 60,25 80,0 120,35 150,0 190,28 230,0 270,35 310,0 350,25 380,0 400,30 400,0"/>
+                            </svg>
+
+                            <div class="relative z-10">
+                                <span class="px-3 py-1 rounded-full bg-purple-500/30 border border-purple-400/40 text-purple-200 text-xs font-black uppercase tracking-wider inline-flex items-center gap-1.5 mb-2">
+                                    <i class="fa-solid fa-mountain"></i> Cave Adventure
+                                </span>
+                                <h2 class="text-3xl font-arcade text-white tracking-wide group-hover:text-amber-300 transition-colors">
+                                    Cave Golf
+                                </h2>
+                                <p class="text-xs text-purple-200 font-bold mt-1">Estimate Angles, Power & Ricochets!</p>
+                            </div>
+
+                            <div class="relative z-10 w-20 h-20 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-slate-950 text-4xl shadow-xl shadow-orange-500/30 group-hover:scale-110 group-hover:rotate-6 transition-all duration-300">
+                                <i class="fa-solid fa-golf-ball-tee"></i>
+                            </div>
+                        </div>
+
+                        <div class="p-6 space-y-4">
+                            <p class="text-slate-300 text-sm leading-relaxed">
+                                Navigate subterranean tunnels and glowing caverns! Line up your shot by accurately estimating launch angles, wall ricochets, and power bars to hit the target underground hole.
+                            </p>
+
+                            <div class="flex flex-wrap gap-2">
+                                <span class="px-3 py-1 rounded-lg bg-slate-800 border border-slate-700 text-cyan-300 text-xs font-bold">
+                                    <i class="fa-solid fa-compass-drafting mr-1"></i> Geometry & Angles
+                                </span>
+                                <span class="px-3 py-1 rounded-lg bg-slate-800 border border-slate-700 text-pink-300 text-xs font-bold">
+                                    <i class="fa-solid fa-arrows-spin mr-1"></i> Bounce Prediction
+                                </span>
+                                <span class="px-3 py-1 rounded-lg bg-slate-800 border border-slate-700 text-amber-300 text-xs font-bold">
+                                    <i class="fa-solid fa-gauge-high mr-1"></i> Power Scale
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="px-6 pb-6 pt-2">
+                        <a href="./Cave Golf/index.html" onclick="playClickSound()" class="btn-arcade w-full block text-center py-3.5 px-6 rounded-2xl bg-gradient-to-r from-purple-600 via-indigo-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-arcade text-lg tracking-wider">
+                            PLAY CAVE GOLF <i class="fa-solid fa-circle-play ml-2"></i>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- GAME CARD 2: GORILLAS -->
+                <div class="game-card glass-card rounded-3xl overflow-hidden flex flex-col justify-between group transform hover:-translate-y-2 transition-all duration-300">
+                    <div>
+                        <div class="h-48 bg-gradient-to-br from-amber-950 via-slate-900 to-indigo-950 relative p-6 flex items-center justify-between overflow-hidden">
+                            <div class="absolute bottom-0 left-0 right-0 h-20 opacity-25 text-amber-500 flex items-end justify-between px-2">
+                                <div class="w-8 h-16 bg-current rounded-t-sm"></div>
+                                <div class="w-12 h-24 bg-current rounded-t-sm"></div>
+                                <div class="w-10 h-12 bg-current rounded-t-sm"></div>
+                                <div class="w-14 h-28 bg-current rounded-t-sm"></div>
+                                <div class="w-8 h-18 bg-current rounded-t-sm"></div>
+                            </div>
+
+                            <div class="relative z-10">
+                                <span class="px-3 py-1 rounded-full bg-amber-500/30 border border-amber-400/40 text-amber-200 text-xs font-black uppercase tracking-wider inline-flex items-center gap-1.5 mb-2">
+                                    <i class="fa-solid fa-city"></i> Retro Classic
+                                </span>
+                                <h2 class="text-3xl font-arcade text-white tracking-wide group-hover:text-amber-300 transition-colors">
+                                    Gorillas
+                                </h2>
+                                <p class="text-xs text-amber-200 font-bold mt-1">Explosive Banana Trajectory Battles!</p>
+                            </div>
+
+                            <div class="relative z-10 w-20 h-20 rounded-2xl bg-gradient-to-br from-yellow-400 to-amber-500 flex items-center justify-center text-slate-950 text-4xl shadow-xl shadow-amber-500/30 group-hover:scale-110 group-hover:-rotate-6 transition-all duration-300">
+                                <i class="fa-solid fa-hand-gorilla text-yellow-950"></i>
+                            </div>
+                        </div>
+
+                        <div class="p-6 space-y-4">
+                            <p class="text-slate-300 text-sm leading-relaxed">
+                                Battle high above city skyscrapers! Estimate the perfect angle (0-90°) and launch velocity to hurl explosive bananas over buildings and land hits on your opponent!
+                            </p>
+
+                            <div class="flex flex-wrap gap-2">
+                                <span class="px-3 py-1 rounded-lg bg-slate-800 border border-slate-700 text-amber-300 text-xs font-bold">
+                                    <i class="fa-solid fa-chart-line mr-1"></i> Trajectory & Gravity
+                                </span>
+                                <span class="px-3 py-1 rounded-lg bg-slate-800 border border-slate-700 text-cyan-300 text-xs font-bold">
+                                    <i class="fa-solid fa-circle-notch mr-1"></i> Angle Estimation (°)
+                                </span>
+                                <span class="px-3 py-1 rounded-lg bg-slate-800 border border-slate-700 text-emerald-300 text-xs font-bold">
+                                    <i class="fa-solid fa-wind mr-1"></i> Velocity Calculation
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="px-6 pb-6 pt-2">
+                        <a href="./Gorillas/index.html" onclick="playClickSound()" class="btn-arcade w-full block text-center py-3.5 px-6 rounded-2xl bg-gradient-to-r from-amber-500 via-orange-600 to-red-600 hover:from-amber-400 hover:to-red-500 text-white font-arcade text-lg tracking-wider">
+                            PLAY GORILLAS <i class="fa-solid fa-circle-play ml-2"></i>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- GAME CARD 3: MATH GOLF -->
+                <div class="game-card glass-card rounded-3xl overflow-hidden flex flex-col justify-between group transform hover:-translate-y-2 transition-all duration-300">
+                    <div>
+                        <div class="h-48 bg-gradient-to-br from-emerald-950 via-teal-900 to-slate-900 relative p-6 flex items-center justify-between overflow-hidden">
+                            <div class="absolute -right-10 -top-10 w-40 h-40 bg-emerald-500/20 rounded-full blur-2xl group-hover:bg-teal-400/30 transition-all duration-500"></div>
+
+                            <div class="relative z-10">
+                                <span class="px-3 py-1 rounded-full bg-emerald-500/30 border border-emerald-400/40 text-emerald-200 text-xs font-black uppercase tracking-wider inline-flex items-center gap-1.5 mb-2">
+                                    <i class="fa-solid fa-flag-checkered"></i> Precision Fairway
+                                </span>
+                                <h2 class="text-3xl font-arcade text-white tracking-wide group-hover:text-emerald-300 transition-colors">
+                                    Math Golf
+                                </h2>
+                                <p class="text-xs text-emerald-200 font-bold mt-1">Solve Math Problems for Perfect Shots!</p>
+                            </div>
+
+                            <div class="relative z-10 w-20 h-20 rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-slate-950 text-4xl shadow-xl shadow-emerald-500/30 group-hover:scale-110 group-hover:rotate-6 transition-all duration-300">
+                                <i class="fa-solid fa-trophy text-emerald-950"></i>
+                            </div>
+                        </div>
+
+                        <div class="p-6 space-y-4">
+                            <p class="text-slate-300 text-sm leading-relaxed">
+                                Combine golf skills with mental math! Solve fast multiplication, division, addition, and estimation problems. The closer your estimate, the closer your shot lands to the hole.
+                            </p>
+
+                            <div class="flex flex-wrap gap-2">
+                                <span class="px-3 py-1 rounded-lg bg-slate-800 border border-slate-700 text-emerald-300 text-xs font-bold">
+                                    <i class="fa-solid fa-calculator mr-1"></i> Mental Math & Operations
+                                </span>
+                                <span class="px-3 py-1 rounded-lg bg-slate-800 border border-slate-700 text-amber-300 text-xs font-bold">
+                                    <i class="fa-solid fa-stopwatch mr-1"></i> Quick Speed
+                                </span>
+                                <span class="px-3 py-1 rounded-lg bg-slate-800 border border-slate-700 text-cyan-300 text-xs font-bold">
+                                    <i class="fa-solid fa-bullseye mr-1"></i> Target Proximity
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="px-6 pb-6 pt-2">
+                        <a href="./Math_Golf/index.html" onclick="playClickSound()" class="btn-arcade w-full block text-center py-3.5 px-6 rounded-2xl bg-gradient-to-r from-emerald-500 via-teal-600 to-cyan-600 hover:from-emerald-400 hover:to-cyan-500 text-white font-arcade text-lg tracking-wider">
+                            PLAY MATH GOLF <i class="fa-solid fa-circle-play ml-2"></i>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- GAME CARD 4: NUMBER GUESSER -->
+                <div class="game-card glass-card rounded-3xl overflow-hidden flex flex-col justify-between group transform hover:-translate-y-2 transition-all duration-300">
+                    <div>
+                        <div class="h-48 bg-gradient-to-br from-cyan-950 via-blue-900 to-slate-900 relative p-6 flex items-center justify-between overflow-hidden">
+                            <div class="absolute -left-10 -bottom-10 w-40 h-40 bg-cyan-500/20 rounded-full blur-2xl group-hover:bg-blue-400/30 transition-all duration-500"></div>
+
+                            <div class="relative z-10">
+                                <span class="px-3 py-1 rounded-full bg-cyan-500/30 border border-cyan-400/40 text-cyan-200 text-xs font-black uppercase tracking-wider inline-flex items-center gap-1.5 mb-2">
+                                    <i class="fa-solid fa-lightbulb"></i> Brain Teaser
+                                </span>
+                                <h2 class="text-3xl font-arcade text-white tracking-wide group-hover:text-cyan-300 transition-colors">
+                                    Number Guesser
+                                </h2>
+                                <p class="text-xs text-cyan-200 font-bold mt-1">High/Low Logic & Smart Elimination!</p>
+                            </div>
+
+                            <div class="relative z-10 w-20 h-20 rounded-2xl bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center text-slate-950 text-4xl shadow-xl shadow-cyan-500/30 group-hover:scale-110 group-hover:-rotate-6 transition-all duration-300">
+                                <i class="fa-solid fa-question text-cyan-950"></i>
+                            </div>
+                        </div>
+
+                        <div class="p-6 space-y-4">
+                            <p class="text-slate-300 text-sm leading-relaxed">
+                                Lock onto secret hidden numbers using smart range narrowing! Pay close attention to "TOO HIGH" and "TOO LOW" clues to zero in on target answers with minimal attempts.
+                            </p>
+
+                            <div class="flex flex-wrap gap-2">
+                                <span class="px-3 py-1 rounded-lg bg-slate-800 border border-slate-700 text-cyan-300 text-xs font-bold">
+                                    <i class="fa-solid fa-sliders mr-1"></i> Number Sense & Range
+                                </span>
+                                <span class="px-3 py-1 rounded-lg bg-slate-800 border border-slate-700 text-purple-300 text-xs font-bold">
+                                    <i class="fa-solid fa-brain mr-1"></i> Logical Deduction
+                                </span>
+                                <span class="px-3 py-1 rounded-lg bg-slate-800 border border-slate-700 text-amber-300 text-xs font-bold">
+                                    <i class="fa-solid fa-arrow-down-up-across-line mr-1"></i> Binary Search Logic
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="px-6 pb-6 pt-2">
+                        <a href="./Number_Guesser/index.html" onclick="playClickSound()" class="btn-arcade w-full block text-center py-3.5 px-6 rounded-2xl bg-gradient-to-r from-cyan-500 via-blue-600 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 text-white font-arcade text-lg tracking-wider">
+                            PLAY NUMBER GUESSER <i class="fa-solid fa-circle-play ml-2"></i>
+                        </a>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+
+        <section class="container mx-auto px-4 pt-4 pb-8">
+            <div class="glass-card max-w-4xl mx-auto rounded-3xl p-6 sm:p-8 relative overflow-hidden">
+                <div class="absolute -right-20 -top-20 w-60 h-60 bg-pink-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+                <div class="flex flex-col md:flex-row items-center justify-between gap-6">
+                    <div class="space-y-2 text-center md:text-left">
+                        <span class="px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-extrabold uppercase tracking-wider inline-flex items-center gap-1">
+                            <i class="fa-solid fa-fire text-amber-400"></i> Warm-Up Challenge
+                        </span>
+                        <h3 class="text-2xl sm:text-3xl font-arcade text-white">Quick Angle Estimator!</h3>
+                        <p class="text-slate-300 text-sm max-w-md">
+                            Can you guess the angle shown below within 15 degrees? Warm up your math brain before launching a game!
+                        </p>
+                    </div>
+
+                    <div class="bg-slate-900/90 border border-slate-700/80 p-5 rounded-2xl flex flex-col items-center gap-4 w-full md:w-auto">
+                        <canvas id="angleCanvas" width="160" height="120" class="bg-slate-950 rounded-xl border border-slate-800"></canvas>
+                        
+                        <div class="flex items-center gap-2 w-full">
+                            <input 
+                                type="number" 
+                                id="angleGuessInput" 
+                                min="0" 
+                                max="180" 
+                                placeholder="e.g. 45" 
+                                class="w-28 bg-slate-800 text-white font-bold text-center py-2 px-3 rounded-xl border border-slate-600 focus:outline-none focus:border-pink-500 text-sm"
+                                onkeydown="if(event.key === 'Enter') checkAngleGuess()"
+                            >
+                            <button onclick="checkAngleGuess()" class="px-4 py-2 bg-pink-500 hover:bg-pink-600 text-white font-arcade text-sm rounded-xl transition shadow-md shadow-pink-500/20">
+                                Check
+                            </button>
+                        </div>
+                        <p id="angleFeedback" class="text-xs font-bold text-slate-400 h-4 text-center"></p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </div>
+
+    <script>
+        let soundEnabled = true;
+        let audioCtx = null;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        function playClickSound() {
+            if (!soundEnabled) return;
+            try {
+                initAudio();
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(440, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.1);
+                
+                gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+                
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.1);
+            } catch (e) {}
+        }
+
+        function playSuccessSound() {
+            if (!soundEnabled) return;
+            try {
+                initAudio();
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+                const now = audioCtx.currentTime;
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(523.25, now);
+                osc.frequency.setValueAtTime(659.25, now + 0.08);
+                osc.frequency.setValueAtTime(783.99, now + 0.16);
+
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                osc.start(now);
+                osc.stop(now + 0.3);
+            } catch (e) {}
+        }
+
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            const icon = document.getElementById('soundIcon');
+            const text = document.getElementById('soundText');
+            if (soundEnabled) {
+                icon.className = 'fa-solid fa-volume-high text-indigo-400';
+                text.innerText = 'Sound ON';
+                playClickSound();
+            } else {
+                icon.className = 'fa-solid fa-volume-xmark text-slate-500';
+                text.innerText = 'Sound OFF';
+            }
+        }
+
+        let targetAngle = 45;
+
+        function generateAngleChallenge() {
+            const canvas = document.getElementById('angleCanvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const width = canvas.width;
+            const height = canvas.height;
+
+            targetAngle = Math.floor(Math.random() * 15) * 10 + 15;
+
+            ctx.clearRect(0, 0, width, height);
+
+            const originX = 30;
+            const originY = height - 25;
+            const lineLength = 90;
+
+            ctx.beginPath();
+            ctx.moveTo(originX, originY);
+            ctx.lineTo(originX + lineLength, originY);
+            ctx.strokeStyle = '#94a3b8';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+
+            const rad = (targetAngle * Math.PI) / 180;
+            const endX = originX + lineLength * Math.cos(rad);
+            const endY = originY - lineLength * Math.sin(rad);
+
+            ctx.beginPath();
+            ctx.moveTo(originX, originY);
+            ctx.lineTo(endX, endY);
+            ctx.strokeStyle = '#ec4899';
+            ctx.lineWidth = 4;
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.arc(originX, originY, 25, 0, -rad, true);
+            ctx.strokeStyle = '#fbbf24';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.arc(originX, originY, 4, 0, Math.PI * 2);
+            ctx.fillStyle = '#38bdf8';
+            ctx.fill();
+        }
+
+        function checkAngleGuess() {
+            const input = document.getElementById('angleGuessInput');
+            const feedback = document.getElementById('angleFeedback');
+            const guess = parseInt(input.value, 10);
+
+            if (isNaN(guess)) {
+                feedback.innerText = "Please enter a number!";
+                feedback.className = "text-xs font-bold text-amber-400 h-4 text-center";
+                return;
+            }
+
+            const diff = Math.abs(guess - targetAngle);
+
+            // Acceptable range extended to 15 degrees
+            if (diff === 0) {
+                feedback.innerText = `PERFECT! It was exactly ${targetAngle}°! 🎉`;
+                feedback.className = "text-xs font-bold text-emerald-400 h-4 text-center";
+                playSuccessSound();
+                confetti({ particleCount: 50, spread: 60, origin: { y: 0.8 } });
+                setTimeout(generateAngleChallenge, 2500);
+            } else if (diff <= 15) {
+                feedback.innerText = `GREAT JOB! Target was ${targetAngle}° (off by only ${diff}°)! 🎯`;
+                feedback.className = "text-xs font-bold text-cyan-400 h-4 text-center";
+                playSuccessSound();
+                confetti({ particleCount: 30, spread: 50, origin: { y: 0.8 } });
+                setTimeout(generateAngleChallenge, 2500);
+            } else {
+                feedback.innerText = `Close! Off by ${diff}°. Target was ${targetAngle}°. Try again!`;
+                feedback.className = "text-xs font-bold text-pink-400 h-4 text-center";
+                playClickSound();
+            }
+
+            input.value = '';
+        }
+
+        window.onload = function() {
+            generateAngleChallenge();
+        };
+    </script>
+</body>
+</html>
