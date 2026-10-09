@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hi-Lo Guessing Game</title>
+    <style>
+        /* Base styles optimized for 1360x768 */
+        body {
+            background-color: #1e1e2e;
+            color: #cdd6f4;
+            font-family: 'Courier New', Courier, monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden; 
+        }
+
+        #game-wrapper {
+            background-color: #181825;
+            border: 4px solid #89b4fa;
+            border-radius: 12px;
+            width: 1280px; 
+            height: 700px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+            position: relative;
+        }
+
+        h1 {
+            color: #a6e3a1;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            font-size: 36px;
+            text-shadow: 2px 2px #000;
+        }
+
+        /* Menu & Score Styles */
+        #menu-screen, #game-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            height: 100%;
+        }
+
+        .score-board {
+            display: flex;
+            gap: 40px;
+            font-size: 24px;
+            margin-bottom: 30px;
+            background: #313244;
+            padding: 10px 30px;
+            border-radius: 8px;
+            border: 2px solid #585b70;
+        }
+
+        .btn {
+            background-color: #89b4fa;
+            color: #11111b;
+            border: none;
+            padding: 15px 30px;
+            font-size: 24px;
+            font-family: inherit;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 8px;
+            margin: 10px;
+            transition: transform 0.1s, background-color 0.2s;
+        }
+
+        .btn:hover { background-color: #b4befe; transform: scale(1.05); }
+        .btn:active { transform: scale(0.95); }
+
+        /* Game UI Elements */
+        #feedback-text {
+            font-size: 32px;
+            font-weight: bold;
+            color: #f9e2af;
+            height: 40px;
+            margin-bottom: 10px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        input[type="number"] {
+            font-size: 28px;
+            font-family: inherit;
+            padding: 10px;
+            width: 150px;
+            text-align: center;
+            background: #313244;
+            color: #cdd6f4;
+            border: 2px solid #89b4fa;
+            border-radius: 8px;
+        }
+
+        input[type="number"]:focus { outline: none; border-color: #a6e3a1; }
+
+        #attempts-display {
+            font-size: 20px;
+            color: #f38ba8;
+        }
+
+        /* Container System */
+        #grid-container {
+            display: grid;
+            gap: 4px;
+            width: 1100px; 
+            height: 400px;
+            background: #11111b;
+            padding: 4px;
+            border-radius: 8px;
+            border: 2px solid #585b70;
+            transition: grid-template-columns 0.4s ease, font-size 0.4s ease;
+        }
+
+        /* Static Layouts for 20 and 100 */
+        .grid-20 { grid-template-columns: repeat(10, 1fr); font-size: 28px; }
+        .grid-100 { grid-template-columns: repeat(20, 1fr); font-size: 18px; }
+
+        .cell {
+            background-color: #a6e3a1; 
+            color: #11111b;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            user-select: none;
+            font-weight: bold;
+            min-height: 0;
+            min-width: 0;
+            transition: all 0.3s ease;
+        }
+
+        /* Specific class applied to crossed out numbers in static grids */
+        .cell.crossed {
+            background-color: #313244;
+            color: #585b70;
+            text-decoration: line-through;
+            opacity: 0.4;
+        }
+
+        /* Modal for Game Over */
+        #modal {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(17, 17, 27, 0.9);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+        }
+
+        #modal-text {
+            font-size: 48px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .win-text { color: #a6e3a1; }
+        .lose-text { color: #f38ba8; }
+        .hidden { display: none !important; }
+
+    </style>
+</head>
+<body>
+
+    <div id="game-wrapper">
+        
+        <div id="menu-screen">
+            <h1>HI-LO NUMBER GUESSER</h1>
+            <div class="score-board">
+                <div>STUDENT: <span id="score-player">0</span></div>
+                <div>COMPUTER: <span id="score-comp">0</span></div>
+            </div>
+            <h2>SELECT YOUR RANGE:</h2>
+            <button class="btn" onclick="startGame(20)">1 to 20</button>
+            <button class="btn" onclick="startGame(100)">1 to 100</button>
+            <button class="btn" onclick="startGame(1000)">1 to 1000</button>
+        </div>
+
+        <div id="game-screen" class="hidden">
+            <h1>GUESS THE NUMBER!</h1>
+            <div id="feedback-text">Awaiting your first guess...</div>
+            
+            <div class="controls">
+                <input type="number" id="guess-input" placeholder="0" onkeypress="handleKeyPress(event)">
+                <button class="btn" onclick="processGuess()">GUESS</button>
+                <div id="attempts-display">Tries Left: <span id="tries">10</span></div>
+            </div>
+
+            <div id="grid-container"></div>
+        </div>
+
+        <div id="modal">
+            <div id="modal-text"></div>
+            <button class="btn" onclick="returnToMenu()">PLAY AGAIN</button>
+        </div>
+
+    </div>
+
+    <script>
+        // Game State
+        let playerScore = 0;
+        let compScore = 0;
+        let targetNumber = 0;
+        let currentRange = 0;
+        let attempts = 10;
+        
+        // Deduction boundaries
+        let minVisible = 1;
+        let maxVisible = 100;
+
+        // DOM Elements
+        const menuScreen = document.getElementById('menu-screen');
+        const gameScreen = document.getElementById('game-screen');
+        const gridContainer = document.getElementById('grid-container');
+        const guessInput = document.getElementById('guess-input');
+        const feedbackText = document.getElementById('feedback-text');
+        const triesDisplay = document.getElementById('tries');
+        const modal = document.getElementById('modal');
+        const modalText = document.getElementById('modal-text');
+        const scorePlayerEl = document.getElementById('score-player');
+        const scoreCompEl = document.getElementById('score-comp');
+
+        function startGame(range) {
+            currentRange = range;
+            minVisible = 1;
+            maxVisible = range;
+            attempts = 10;
+            targetNumber = Math.floor(Math.random() * range) + 1;
+            
+            // Reset UI Text
+            feedbackText.innerText = `I am thinking of a number between 1 and ${range}...`;
+            feedbackText.style.color = "#f9e2af";
+            triesDisplay.innerText = attempts;
+            guessInput.value = '';
+            guessInput.min = 1;
+            guessInput.max = range;
+            
+            buildGrid(range);
+
+            menuScreen.classList.add('hidden');
+            gameScreen.classList.remove('hidden');
+            guessInput.focus();
+        }
+
+        function buildGrid(range) {
+            gridContainer.innerHTML = ''; 
+            gridContainer.className = ''; 
+            
+            // Clear any inline styles left over from playing the 1000 mode
+            gridContainer.style.gridTemplateColumns = '';
+            gridContainer.style.fontSize = '';
+
+            // Apply static classes for smaller ranges
+            if (range === 20 || range === 100) {
+                gridContainer.classList.add(`grid-${range}`);
+            }
+            
+            // Build the blocks
+            for (let i = 1; i <= range; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'cell';
+                cell.id = `cell-${i}`;
+                cell.innerText = i;
+                cell.title = i; // Tooltip for small numbers
+                gridContainer.appendChild(cell);
+            }
+            
+            // If it's the 1000 mode, immediately calculate its dynamic starting layout
+            if (range === 1000) {
+                updateVisuals();
+            }
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === "Enter") {
+                processGuess();
+            }
+        }
+
+        function processGuess() {
+            let guess = parseInt(guessInput.value);
+
+            // Validation
+            if (isNaN(guess) || guess < 1 || guess > currentRange) {
+                feedbackText.innerText = `Oops! Enter a number between 1 and ${currentRange}.`;
+                feedbackText.style.color = "#f38ba8";
+                return;
+            }
+
+            if (guess < minVisible || guess > maxVisible) {
+                feedbackText.innerText = `You already know ${guess} isn't it!`;
+                feedbackText.style.color = "#f38ba8";
+                guessInput.value = '';
+                return;
+            }
+
+            attempts--;
+            triesDisplay.innerText = attempts;
+
+            if (guess === targetNumber) {
+                endGame(true);
+            } else if (guess > targetNumber) {
+                feedbackText.innerText = `${guess} is TOO HIGH!`;
+                feedbackText.style.color = "#89b4fa";
+                maxVisible = Math.min(maxVisible, guess - 1); 
+                updateVisuals();
+                checkLoss();
+            } else if (guess < targetNumber) {
+                feedbackText.innerText = `${guess} is TOO LOW!`;
+                feedbackText.style.color = "#f38ba8";
+                minVisible = Math.max(minVisible, guess + 1); 
+                updateVisuals();
+                checkLoss();
+            }
+            
+            guessInput.value = '';
+            guessInput.focus();
+        }
+
+        // Handles both the static crossing out AND the dynamic scaling depending on the mode
+        function updateVisuals() {
+            if (currentRange === 1000) {
+                // DYNAMIC MODE (Disappear and Scale)
+                let remainingCount = maxVisible - minVisible + 1;
+                if (remainingCount < 1) remainingCount = 1;
+
+                // Hide eliminated
+                for (let i = 1; i <= currentRange; i++) {
+                    const cell = document.getElementById(`cell-${i}`);
+                    if (i < minVisible || i > maxVisible) {
+                        cell.style.display = 'none';
+                    } else {
+                        cell.style.display = 'flex';
+                    }
+                }
+
+                // Recalculate Grid
+                let cols = Math.max(3, Math.ceil(Math.sqrt(remainingCount * 2.75)));
+                let rows = Math.ceil(remainingCount / cols);
+                let rowHeight = 400 / rows;
+                let newFontSize = Math.max(8, Math.min(80, Math.floor(rowHeight * 0.4)));
+
+                gridContainer.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+                gridContainer.style.fontSize = `${newFontSize}px`;
+
+            } else {
+                // STATIC MODE (Cross out only)
+                for (let i = 1; i <= currentRange; i++) {
+                    const cell = document.getElementById(`cell-${i}`);
+                    // If a number falls outside our current viable range, cross it out
+                    if (i < minVisible || i > maxVisible) {
+                        if (!cell.classList.contains('crossed')) {
+                            cell.classList.add('crossed');
+                        }
+                    }
+                }
+            }
+        }
+
+        function checkLoss() {
+            if (attempts <= 0) {
+                endGame(false);
+            }
+        }
+
+        function endGame(playerWon) {
+            modal.style.display = 'flex';
+            if (playerWon) {
+                playerScore++;
+                scorePlayerEl.innerText = playerScore;
+                modalText.innerHTML = `<span class="win-text">YOU GOT IT!</span><br>The number was ${targetNumber}!`;
+            } else {
+                compScore++;
+                scoreCompEl.innerText = compScore;
+                modalText.innerHTML = `<span class="lose-text">OUT OF TRIES!</span><br>The number was ${targetNumber}!`;
+            }
+        }
+
+        function returnToMenu() {
+            modal.style.display = 'none';
+            gameScreen.classList.add('hidden');
+            menuScreen.classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
