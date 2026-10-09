@@ -59,6 +59,14 @@
             border: 2px solid #585b70;
         }
 
+        .btn-container {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+            max-width: 800px;
+        }
+
         .btn {
             background-color: #89b4fa;
             color: #11111b;
@@ -75,6 +83,9 @@
 
         .btn:hover { background-color: #b4befe; transform: scale(1.05); }
         .btn:active { transform: scale(0.95); }
+        
+        .btn-boss { background-color: #f38ba8; }
+        .btn-boss:hover { background-color: #fba1b8; }
 
         /* Game UI Elements */
         #feedback-text {
@@ -96,7 +107,7 @@
             font-size: 28px;
             font-family: inherit;
             padding: 10px;
-            width: 150px;
+            width: 180px; /* Slightly wider for larger numbers */
             text-align: center;
             background: #313244;
             color: #cdd6f4;
@@ -142,7 +153,6 @@
             transition: all 0.3s ease;
         }
 
-        /* Specific class applied to crossed out numbers in static grids */
         .cell.crossed {
             background-color: #313244;
             color: #585b70;
@@ -185,9 +195,12 @@
                 <div>COMPUTER: <span id="score-comp">0</span></div>
             </div>
             <h2>SELECT YOUR RANGE:</h2>
-            <button class="btn" onclick="startGame(20)">1 to 20</button>
-            <button class="btn" onclick="startGame(100)">1 to 100</button>
-            <button class="btn" onclick="startGame(1000)">1 to 1000</button>
+            <div class="btn-container">
+                <button class="btn" onclick="startGame(20)">1 to 20</button>
+                <button class="btn" onclick="startGame(100)">1 to 100</button>
+                <button class="btn" onclick="startGame(1000)">1 to 1,000</button>
+                <button class="btn btn-boss" onclick="startGame(1000000)">BOSS LEVEL: 1 to 1,000,000</button>
+            </div>
         </div>
 
         <div id="game-screen" class="hidden">
@@ -222,6 +235,11 @@
         let minVisible = 1;
         let maxVisible = 100;
 
+        // Boss Level tracking variables
+        let bossGridBuilt = false;
+        let bossGridStart = 0;
+        let bossGridEnd = 0;
+
         // DOM Elements
         const menuScreen = document.getElementById('menu-screen');
         const gameScreen = document.getElementById('game-screen');
@@ -238,18 +256,37 @@
             currentRange = range;
             minVisible = 1;
             maxVisible = range;
-            attempts = 10;
+            bossGridBuilt = false; // Reset boss grid state
+            
+            // Give 20 attempts for 1,000,000. Give 10 for the rest.
+            attempts = (range === 1000000) ? 20 : 10; 
             targetNumber = Math.floor(Math.random() * range) + 1;
             
-            // Reset UI Text
-            feedbackText.innerText = `I am thinking of a number between 1 and ${range}...`;
+            // Reset UI Text with commas for big numbers
+            feedbackText.innerText = `I am thinking of a number between 1 and ${range.toLocaleString()}...`;
             feedbackText.style.color = "#f9e2af";
             triesDisplay.innerText = attempts;
             guessInput.value = '';
             guessInput.min = 1;
             guessInput.max = range;
             
-            buildGrid(range);
+            // Handle Grid Creation
+            if (range === 1000000) {
+                // Setup the offline screen for the massive range
+                gridContainer.innerHTML = '';
+                gridContainer.className = '';
+                gridContainer.style.gridTemplateColumns = '';
+                gridContainer.style.display = 'flex';
+                gridContainer.style.justifyContent = 'center';
+                gridContainer.style.alignItems = 'center';
+                gridContainer.style.textAlign = 'center';
+                gridContainer.style.fontSize = '32px';
+                gridContainer.style.color = '#f38ba8';
+                gridContainer.style.lineHeight = '1.5';
+                gridContainer.innerText = `[ GRID OFFLINE ]\nToo many numbers to render!\nNarrow your guess to a range of 1,000 or less to restore visual aid.`;
+            } else {
+                buildGrid(range);
+            }
 
             menuScreen.classList.add('hidden');
             gameScreen.classList.remove('hidden');
@@ -259,8 +296,7 @@
         function buildGrid(range) {
             gridContainer.innerHTML = ''; 
             gridContainer.className = ''; 
-            
-            // Clear any inline styles left over from playing the 1000 mode
+            gridContainer.style.display = 'grid'; // Reset from flex if coming from boss mode
             gridContainer.style.gridTemplateColumns = '';
             gridContainer.style.fontSize = '';
 
@@ -285,6 +321,24 @@
             }
         }
 
+        // Dedicated function to only build the DOM elements for the narrowed 1,000,000 mode
+        function buildBossGrid(min, max) {
+            gridContainer.innerHTML = '';
+            gridContainer.style.display = 'grid'; // Switch from the offline flex text
+            bossGridStart = min;
+            bossGridEnd = max;
+
+            for (let i = min; i <= max; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'cell';
+                cell.id = `cell-${i}`;
+                cell.innerText = i;
+                cell.title = i;
+                gridContainer.appendChild(cell);
+            }
+            bossGridBuilt = true;
+        }
+
         function handleKeyPress(event) {
             if (event.key === "Enter") {
                 processGuess();
@@ -296,13 +350,13 @@
 
             // Validation
             if (isNaN(guess) || guess < 1 || guess > currentRange) {
-                feedbackText.innerText = `Oops! Enter a number between 1 and ${currentRange}.`;
+                feedbackText.innerText = `Oops! Enter a number between 1 and ${currentRange.toLocaleString()}.`;
                 feedbackText.style.color = "#f38ba8";
                 return;
             }
 
             if (guess < minVisible || guess > maxVisible) {
-                feedbackText.innerText = `You already know ${guess} isn't it!`;
+                feedbackText.innerText = `You already know ${guess.toLocaleString()} isn't it!`;
                 feedbackText.style.color = "#f38ba8";
                 guessInput.value = '';
                 return;
@@ -314,13 +368,13 @@
             if (guess === targetNumber) {
                 endGame(true);
             } else if (guess > targetNumber) {
-                feedbackText.innerText = `${guess} is TOO HIGH!`;
+                feedbackText.innerText = `${guess.toLocaleString()} is TOO HIGH!`;
                 feedbackText.style.color = "#89b4fa";
                 maxVisible = Math.min(maxVisible, guess - 1); 
                 updateVisuals();
                 checkLoss();
             } else if (guess < targetNumber) {
-                feedbackText.innerText = `${guess} is TOO LOW!`;
+                feedbackText.innerText = `${guess.toLocaleString()} is TOO LOW!`;
                 feedbackText.style.color = "#f38ba8";
                 minVisible = Math.max(minVisible, guess + 1); 
                 updateVisuals();
@@ -331,24 +385,42 @@
             guessInput.focus();
         }
 
-        // Handles both the static crossing out AND the dynamic scaling depending on the mode
         function updateVisuals() {
-            if (currentRange === 1000) {
-                // DYNAMIC MODE (Disappear and Scale)
-                let remainingCount = maxVisible - minVisible + 1;
-                if (remainingCount < 1) remainingCount = 1;
+            let remainingCount = maxVisible - minVisible + 1;
+            if (remainingCount < 1) remainingCount = 1;
 
-                // Hide eliminated
-                for (let i = 1; i <= currentRange; i++) {
+            if (currentRange === 1000000) {
+                // If we finally hit a range <= 1000, build the grid!
+                if (remainingCount <= 1000 && !bossGridBuilt) {
+                    buildBossGrid(minVisible, maxVisible);
+                }
+
+                // If grid isn't built yet, just update the offline text
+                if (!bossGridBuilt) {
+                    gridContainer.innerText = `[ GRID OFFLINE ]\nCurrent possible numbers: ${remainingCount.toLocaleString()}\nKeep narrowing it down to 1,000 or less!`;
+                    return; 
+                }
+            }
+
+            // DYNAMIC MODE logic (Handles both 1,000 and the revealed 1,000,000 grid)
+            if (currentRange === 1000 || (currentRange === 1000000 && bossGridBuilt)) {
+                
+                // Only loop over the DOM elements that actually exist
+                let startLoop = (currentRange === 1000000) ? bossGridStart : 1;
+                let endLoop = (currentRange === 1000000) ? bossGridEnd : currentRange;
+
+                for (let i = startLoop; i <= endLoop; i++) {
                     const cell = document.getElementById(`cell-${i}`);
-                    if (i < minVisible || i > maxVisible) {
-                        cell.style.display = 'none';
-                    } else {
-                        cell.style.display = 'flex';
+                    if (cell) {
+                        if (i < minVisible || i > maxVisible) {
+                            cell.style.display = 'none';
+                        } else {
+                            cell.style.display = 'flex';
+                        }
                     }
                 }
 
-                // Recalculate Grid
+                // Recalculate Grid Columns and Text Size
                 let cols = Math.max(3, Math.ceil(Math.sqrt(remainingCount * 2.75)));
                 let rows = Math.ceil(remainingCount / cols);
                 let rowHeight = 400 / rows;
@@ -358,10 +430,9 @@
                 gridContainer.style.fontSize = `${newFontSize}px`;
 
             } else {
-                // STATIC MODE (Cross out only)
+                // STATIC MODE (Cross out only for 20 and 100)
                 for (let i = 1; i <= currentRange; i++) {
                     const cell = document.getElementById(`cell-${i}`);
-                    // If a number falls outside our current viable range, cross it out
                     if (i < minVisible || i > maxVisible) {
                         if (!cell.classList.contains('crossed')) {
                             cell.classList.add('crossed');
@@ -382,11 +453,11 @@
             if (playerWon) {
                 playerScore++;
                 scorePlayerEl.innerText = playerScore;
-                modalText.innerHTML = `<span class="win-text">YOU GOT IT!</span><br>The number was ${targetNumber}!`;
+                modalText.innerHTML = `<span class="win-text">YOU GOT IT!</span><br>The number was ${targetNumber.toLocaleString()}!`;
             } else {
                 compScore++;
                 scoreCompEl.innerText = compScore;
-                modalText.innerHTML = `<span class="lose-text">OUT OF TRIES!</span><br>The number was ${targetNumber}!`;
+                modalText.innerHTML = `<span class="lose-text">OUT OF TRIES!</span><br>The number was ${targetNumber.toLocaleString()}!`;
             }
         }
 
