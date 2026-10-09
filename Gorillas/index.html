@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QBasic Gorillas Remake (Classroom Edition)</title>
+    <style>
+        body {
+            background-color: #111111;
+            color: #ffffff;
+            font-family: 'Courier New', Courier, monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            margin: 0;
+            padding: 10px;
+            /* Removed fixed height/overflow to play nice with Google Sites iframes */
+        }
+
+        h1 {
+            color: #ffff55;
+            margin: 0 0 10px 0;
+            font-size: clamp(16px, 4vw, 24px); /* Scales font slightly on small screens */
+            text-shadow: 2px 2px #000;
+            text-align: center;
+        }
+
+        #game-wrapper {
+            border: 4px solid #ffffff;
+            background-color: #0000aa;
+            box-shadow: 0px 10px 30px rgba(0,0,0,0.7);
+            width: 100%;
+            max-width: 800px; /* Caps at 800px but shrinks if the Google Site frame is smaller */
+            box-sizing: border-box;
+        }
+
+        #ui-panel {
+            background-color: #0000aa;
+            width: 100%;
+            padding: 10px;
+            box-sizing: border-box;
+            border-bottom: 3px double #ffffff;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: clamp(12px, 2.5vw, 16px);
+            font-weight: bold;
+            flex-wrap: wrap; /* Allows controls to wrap cleanly if iframe is narrow */
+            gap: 10px;
+        }
+
+        .score-box {
+            color: #ffffff;
+        }
+
+        #controls {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            flex-grow: 1;
+            flex-wrap: wrap;
+        }
+
+        #turn-label {
+            color: #ffff55;
+            min-width: 120px;
+            text-align: center;
+        }
+
+        input[type=number] {
+            background-color: #000000;
+            color: #ffff55;
+            border: 2px solid #ffffff;
+            font-family: 'Courier New', monospace;
+            font-size: 16px;
+            font-weight: bold;
+            width: 50px;
+            text-align: center;
+            padding: 4px;
+            -moz-appearance: textfield; 
+        }
+
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #ffff55;
+            box-shadow: 0 0 5px #ffff55;
+        }
+
+        button {
+            background-color: #aa0000;
+            color: #ffffff;
+            border: 2px solid #ffffff;
+            font-family: 'Courier New', monospace;
+            font-size: 16px;
+            font-weight: bold;
+            padding: 4px 14px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #ff5555;
+        }
+
+        button:disabled {
+            background-color: #555555;
+            cursor: not-allowed;
+            border-color: #aaaaaa;
+        }
+
+        canvas {
+            display: block;
+            background-color: #0000aa;
+            width: 100%; /* Auto-scales visuals to fit the wrapper */
+            height: auto;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>GORILLAS.BAS (CLASSROOM EDITION)</h1>
+
+    <div id="game-wrapper">
+        <div id="ui-panel">
+            <div class="score-box">P1: <span id="p1-score">0</span></div>
+            
+            <div id="controls">
+                <span id="turn-label">Player 1's Turn</span>
+                <span id="input-fields">
+                    Angle: <input type="number" id="angle-input" min="0" max="180" step="1">
+                    Velocity: <input type="number" id="velocity-input" min="1" max="150" step="1">
+                </span>
+                <button id="fire-btn" onclick="launch()">Fire!</button>
+                <button id="next-round-btn" onclick="nextRound()" style="display:none;">Next Round</button>
+            </div>
+
+            <div class="score-box">P2: <span id="p2-score">0</span></div>
+        </div>
+
+        <canvas id="gameCanvas" width="800" height="550"></canvas>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const bgCanvas = document.createElement('canvas');
+        bgCanvas.width = 800;
+        bgCanvas.height = 550;
+        const bgCtx = bgCanvas.getContext('2d');
+
+        let player1 = { x: 0, y: 0, width: 30, height: 30, score: 0, lastAngle: 45, lastVelocity: 60 };
+        let player2 = { x: 0, y: 0, width: 30, height: 30, score: 0, lastAngle: 45, lastVelocity: 60 };
+        let activePlayer = 1;
+        
+        // Reverted to a generic ball projectile
+        let ball = { x: 0, y: 0, vx: 0, vy: 0, active: false };
+        let explosion = { x: 0, y: 0, radius: 0, maxRadius: 25, active: false, isKill: false, hitTarget: 0 };
+        
+        const gravity = 0.025; 
+        let roundOver = false;
+        let victoryText = "";
+
+        function initGame() {
+            player1.score = 0;
+            player2.score = 0;
+            initRound();
+        }
+
+        function initRound() {
+            generateSkyline();
+            activePlayer = 1;
+            roundOver = false;
+            victoryText = "";
+            
+            document.getElementById('turn-label').innerText = "Player 1's Turn";
+            document.getElementById('input-fields').style.display = 'inline';
+            document.getElementById('fire-btn').style.display = 'inline';
+            document.getElementById('fire-btn').disabled = false;
+            document.getElementById('next-round-btn').style.display = 'none';
+
+            updateInputFields(player1.lastAngle, player1.lastVelocity);
+        }
+
+        function updateInputFields(angle, velocity) {
+            const angleInput = document.getElementById('angle-input');
+            const velInput = document.getElementById('velocity-input');
+            
+            angleInput.value = angle;
+            velInput.value = velocity;
+            
+            angleInput.focus();
+            angleInput.select();
+        }
+
+        function generateSkyline() {
+            bgCtx.fillStyle = '#0000aa'; 
+            bgCtx.fillRect(0, 0, 800, 550);
+            
+            let currentX = 0;
+            let buildings = [];
+
+            while (currentX < 800) {
+                let bWidth = Math.floor(Math.random() * 50) + 65;
+                let bHeight = Math.floor(Math.random() * 220) + 130;
+                if (currentX + bWidth > 800) bWidth = 800 - currentX;
+                
+                const colors = ['#00aaaa', '#aa00aa', '#aaaaaa'];
+                let color = colors[Math.floor(Math.random() * colors.length)];
+                
+                bgCtx.fillStyle = color;
+                bgCtx.fillRect(currentX, 550 - bHeight, bWidth, bHeight);
+                
+                bgCtx.fillStyle = '#ffff55'; 
+                for (let wy = 550 - bHeight + 20; wy < 530; wy += 30) {
+                    for (let wx = currentX + 12; wx < currentX + bWidth - 15; wx += 20) {
+                        if (Math.random() > 0.15) {
+                            bgCtx.fillRect(wx, wy, 8, 12);
+                        } else {
+                            bgCtx.fillStyle = '#333333'; 
+                            bgCtx.fillRect(wx, wy, 8, 12);
+                            bgCtx.fillStyle = '#ffff55';
+                        }
+                    }
+                }
+                
+                buildings.push({x: currentX, width: bWidth, height: bHeight});
+                currentX += bWidth;
+            }
+            
+            let b1 = buildings[1];
+            player1.x = b1.x + Math.floor(b1.width / 2) - 15;
+            player1.y = 550 - b1.height - 30;
+            
+            let b2 = buildings[buildings.length - 2];
+            player2.x = b2.x + Math.floor(b2.width / 2) - 15;
+            player2.y = 550 - b2.height - 30;
+        }
+
+        function launch() {
+            if (ball.active || explosion.active || roundOver) return;
+            
+            let angle = parseFloat(document.getElementById('angle-input').value) || 0;
+            let velocity = parseFloat(document.getElementById('velocity-input').value) || 0;
+            
+            if (activePlayer === 1) {
+                player1.lastAngle = angle;
+                player1.lastVelocity = velocity;
+            } else {
+                player2.lastAngle = angle;
+                player2.lastVelocity = velocity;
+            }
+
+            document.getElementById('fire-btn').disabled = true;
+            
+            let angleRad = (angle * Math.PI) / 180;
+            let speedScale = 0.035; 
+            
+            ball.vx = Math.cos(angleRad) * velocity * speedScale;
+            ball.vy = -Math.sin(angleRad) * velocity * speedScale;
+            
+            if (activePlayer === 2) {
+                ball.vx = -ball.vx;
+                ball.x = player2.x - 5;
+                ball.y = player2.y - 10;
+            } else {
+                ball.x = player1.x + player1.width + 5;
+                ball.y = player1.y - 10;
+            }
+            
+            ball.active = true;
+        }
+
+        function checkGorillaHit(bx, by) {
+            if (bx >= player1.x && bx <= player1.x + 30 && by >= player1.y && by <= player1.y + 30) return 1;
+            if (bx >= player2.x && bx <= player2.x + 30 && by >= player2.y && by <= player2.y + 30) return 2;
+            return 0;
+        }
+
+        function triggerExplosion(x, y, isKill, hitTarget) {
+            explosion.x = x;
+            explosion.y = y;
+            explosion.radius = 0;
+            explosion.active = true;
+            explosion.isKill = isKill;
+            explosion.hitTarget = hitTarget;
+        }
+
+        function nextTurn() {
+            activePlayer = activePlayer === 1 ? 2 : 1;
+            document.getElementById('turn-label').innerText = `Player ${activePlayer}'s Turn`;
+            document.getElementById('fire-btn').disabled = false;
+            
+            if (activePlayer === 1) {
+                updateInputFields(player1.lastAngle, player1.lastVelocity);
+            } else {
+                updateInputFields(player2.lastAngle, player2.lastVelocity);
+            }
+        }
+
+        function handleWin(hitTarget) {
+            roundOver = true;
+            if (hitTarget === 1) {
+                player2.score++;
+                victoryText = "PLAYER 2 WINS!";
+            } else {
+                player1.score++;
+                victoryText = "PLAYER 1 WINS!";
+            }
+            document.getElementById('p1-score').innerText = player1.score;
+            document.getElementById('p2-score').innerText = player2.score;
+            
+            document.getElementById('input-fields').style.display = 'none';
+            document.getElementById('fire-btn').style.display = 'none';
+            document.getElementById('next-round-btn').style.display = 'inline';
+            document.getElementById('next-round-btn').focus();
+        }
+
+        function nextRound() {
+            initRound();
+        }
+
+        function update() {
+            if (ball.active) {
+                ball.vy += gravity;
+                ball.x += ball.vx;
+                ball.y += ball.vy;
+                
+                if (ball.x < 0 || ball.x > 800 || ball.y > 550) {
+                    ball.active = false;
+                    nextTurn();
+                    return;
+                }
+                
+                let hit = checkGorillaHit(ball.x, ball.y);
+                if (hit > 0) {
+                    ball.active = false;
+                    triggerExplosion(ball.x, ball.y, true, hit);
+                    return;
+                }
+                
+                if (ball.y >= 0 && ball.y < 550 && ball.x >= 0 && ball.x < 800) {
+                    let pixel = bgCtx.getImageData(Math.floor(ball.x), Math.floor(ball.y), 1, 1).data;
+                    if (pixel[0] !== 0 || pixel[1] !== 0 || pixel[2] !== 170) {
+                        ball.active = false;
+                        triggerExplosion(ball.x, ball.y, false, 0);
+                        return;
+                    }
+                }
+            }
+            
+            if (explosion.active) {
+                explosion.radius += 0.4;
+                if (explosion.radius >= explosion.maxRadius) {
+                    explosion.active = false;
+                    
+                    bgCtx.fillStyle = '#0000aa';
+                    bgCtx.beginPath();
+                    bgCtx.arc(explosion.x, explosion.y, explosion.maxRadius, 0, Math.PI * 2);
+                    bgCtx.fill();
+                    
+                    if (explosion.isKill) {
+                        handleWin(explosion.hitTarget);
+                    } else {
+                        nextTurn();
+                    }
+                }
+            }
+        }
+
+        function render() {
+            ctx.clearRect(0, 0, 800, 550);
+            ctx.drawImage(bgCanvas, 0, 0);
+            drawSun(ctx);
+            drawGorilla(ctx, player1.x, player1.y);
+            drawGorilla(ctx, player2.x, player2.y);
+            
+            // Draw generic ball
+            if (ball.active) {
+                ctx.fillStyle = '#ffff55';
+                ctx.beginPath();
+                ctx.arc(ball.x, ball.y, 4, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            if (explosion.active) {
+                ctx.fillStyle = Math.floor(explosion.radius * 2) % 2 === 0 ? '#ff5555' : '#ffff55';
+                ctx.beginPath();
+                ctx.arc(explosion.x, explosion.y, explosion.radius, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            if (roundOver) {
+                ctx.fillStyle = '#ffff55';
+                ctx.font = 'bold 36px "Courier New", monospace';
+                ctx.textAlign = 'center';
+                ctx.fillText(victoryText, 400, 240);
+            }
+        }
+
+        function drawGorilla(context, x, y) {
+            context.fillStyle = '#aa5500'; 
+            context.fillRect(x + 4, y + 8, 22, 22); 
+            context.fillRect(x + 8, y, 14, 10); 
+            
+            context.fillRect(x, y + 6, 4, 18); 
+            context.fillRect(x + 26, y + 6, 4, 18); 
+            
+            context.fillStyle = '#ffaa55'; 
+            context.fillRect(x + 10, y + 3, 10, 5); 
+            context.fillRect(x + 8, y + 14, 14, 12); 
+
+            context.fillStyle = '#000000';
+            context.fillRect(x + 11, y + 4, 2, 2);
+            context.fillRect(x + 17, y + 4, 2, 2);
+        }
+
+        function drawSun(context) {
+            context.fillStyle = '#ffff55';
+            context.beginPath();
+            context.arc(400, 65, 20, 0, Math.PI * 2);
+            context.fill();
+            
+            context.fillStyle = '#0000aa';
+            context.fillRect(393, 58, 3, 3); 
+            context.fillRect(404, 58, 3, 3); 
+            
+            context.strokeStyle = '#0000aa';
+            context.lineWidth = 2;
+            context.beginPath();
+            context.arc(400, 65, 8, 0.1 * Math.PI, 0.9 * Math.PI); 
+            context.stroke();
+        }
+
+        function gameLoop() {
+            update();
+            render();
+            requestAnimationFrame(gameLoop);
+        }
+
+        window.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !document.getElementById('fire-btn').disabled) {
+                launch();
+            }
+        });
+
+        window.onload = function() {
+            initGame();
+            gameLoop();
+        };
+    </script>
+</body>
+</html>
